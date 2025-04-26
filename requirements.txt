@@ -1,2 +1,6 @@
 ipykernel
 python-dotenv
+fastapi
+uvicorn
+pydantic
+supabase
