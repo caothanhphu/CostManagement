@@ -1,4 +1,4 @@
-from sqlalchemy import Column, BigInteger, String, DateTime, func
+from sqlalchemy import Boolean, Column, BigInteger, String, DateTime, func
 from sqlalchemy.orm import relationship
 from .account import Base  # Import Base từ account.py
 
@@ -11,6 +11,7 @@ class User(Base):
     password_hash = Column(String(255), nullable=False)
     full_name = Column(String(100))
     default_currency = Column(String(3), nullable=False, default="VND")
+    is_active = Column(Boolean, nullable=False, default=False)  # Thêm trường is_active
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
     updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
 

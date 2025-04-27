@@ -8,11 +8,73 @@ from app.api.v1.schemas import UserCreate, Token
 from app.core.security import verify_password, create_access_token, decode_access_token
 from app.models.user import User
 from app.core.logger import setup_logger
+from fastapi_mail import FastMail, MessageSchema, ConnectionConfig
+from app.core.config import settings
 
 # Setup logger
 logger = setup_logger(__name__)
-
+# Email configuration
+mail_conf = ConnectionConfig(
+    MAIL_USERNAME=settings.MAIL_USERNAME,
+    MAIL_PASSWORD=settings.MAIL_PASSWORD,
+    MAIL_FROM=settings.MAIL_FROM,
+    MAIL_PORT=settings.MAIL_PORT,
+    MAIL_SERVER=settings.MAIL_SERVER,
+    MAIL_FROM_NAME=settings.MAIL_FROM_NAME,
+    MAIL_STARTTLS=True,
+    MAIL_SSL_TLS=False
+)
 class AuthService:
+    @staticmethod
+    async def send_activation_email(user: User, activation_token: str):
+        logger.info(f"Sending activation email to {user.email}")
+        activation_link = f"{settings.FRONTEND_URL}/activate?token={activation_token}"
+        html = f"""
+        <h1>Activate Your Account</h1>
+        <p>Hello {user.full_name or user.username},</p>
+        <p>Please click the link below to activate your account:</p>
+        <a href="{activation_link}">Activate Account</a>
+        <p>The link will expire in 24 hours.</p>
+        """
+        message = MessageSchema(
+            subject="Activate Your Account",
+            recipients=[user.email],
+            body=html,
+            subtype="html"
+        )
+        fm = FastMail(mail_conf)
+        try:
+            await fm.send_message(message)
+            logger.info(f"Activation email sent to {user.email}")
+        except Exception as e:
+            logger.error(f"Failed to send activation email to {user.email}: {str(e)}")
+            raise HTTPException(status_code=500, detail="Failed to send activation email")
+
+    @staticmethod
+    async def send_reset_password_email(user: User, reset_token: str):
+        logger.info(f"Sending reset password email to {user.email}")
+        reset_link = f"{settings.FRONTEND_URL}/reset-password?token={reset_token}"
+        html = f"""
+        <h1>Reset Your Password</h1>
+        <p>Hello {user.full_name or user.username},</p>
+        <p>We received a request to reset your password. Click the link below to reset it:</p>
+        <a href="{reset_link}">Reset Password</a>
+        <p>The link will expire in 1 hour.</p>
+        """
+        message = MessageSchema(
+            subject="Reset Your Password",
+            recipients=[user.email],
+            body=html,
+            subtype="html"
+        )
+        fm = FastMail(mail_conf)
+        try:
+            await fm.send_message(message)
+            logger.info(f"Reset password email sent to {user.email}")
+        except Exception as e:
+            logger.error(f"Failed to send reset password email to {user.email}: {str(e)}")
+            raise HTTPException(status_code=500, detail="Failed to send reset password email")
+        
     @staticmethod
     def register(db: Session, user_in: UserCreate) -> User:
         logger.info(f"Registering user with email={user_in.email}")

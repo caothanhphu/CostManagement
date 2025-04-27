@@ -18,7 +18,8 @@ class CRUDUser(CRUDBase[User, UserCreate, UserUpdate]):
             email=obj_in.email,
             password_hash=get_password_hash(obj_in.password),
             full_name=obj_in.full_name,
-            default_currency=obj_in.default_currency
+            default_currency=obj_in.default_currency,
+            is_active=False  # Mặc định chưa kích hoạt
         )
         db.add(db_obj)
         db.commit()

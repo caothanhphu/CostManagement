@@ -15,3 +15,4 @@ pydantic-settings
 fastapi-pagination
 passlib[bcrypt]
 python-jose[cryptography]
+fastapi-mail

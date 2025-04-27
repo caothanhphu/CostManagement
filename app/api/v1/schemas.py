@@ -17,6 +17,7 @@ class UserUpdate(UserBase):
 class UserResponse(UserBase):
     user_id: int
     username: str
+    is_active: bool
     created_at: datetime
     updated_at: datetime
 
@@ -34,6 +35,10 @@ class LoginRequest(BaseModel):
     email: EmailStr
     password: str
     
+class ChangePassword(BaseModel):
+    old_password: str
+    new_password: str
+
 # Account Schemas
 class AccountCreate(BaseModel):
     account_name: str
