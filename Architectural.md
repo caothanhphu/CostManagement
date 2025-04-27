@@ -1,4 +1,164 @@
----
+# **Kiến trúc Project API Python với PostgreSQL và JWT**
+
+Dựa trên lược đồ cơ sở dữ liệu PostgreSQL được cung cấp, chúng ta sẽ thiết kế một kiến trúc API backend bằng Python, sử dụng JWT cho xác thực và tương tác trực tiếp với cơ sở dữ liệu local. Kiến trúc này tuân theo nguyên tắc phân lớp để đảm bảo tính modular, dễ bảo trì và mở rộng.
+
+## **1\. Các Thành phần Chính**
+
+* **Web Framework:** FastAPI . FastAPI được ưa chuộng cho các API hiện đại nhờ hiệu suất cao, hỗ trợ async/await và tự động tạo tài liệu API (Swagger UI).  
+* **Database Interaction:** SQLAlchemy (ORM) kết hợp với Psycopg2 (PostgreSQL adapter). SQLAlchemy cung cấp lớp trừu tượng mạnh mẽ cho việc tương tác cơ sở dữ liệu, giúp code độc lập hơn với chi tiết cụ thể của DB và hỗ trợ quản lý session hiệu quả.  
+* **Authentication:** Thư viện PyJWT để tạo, ký, mã hóa, giải mã và xác minh JWT.  
+* **Password Hashing:** Thư viện passlib (hỗ trợ bcrypt) để mã hóa mật khẩu một cách an toàn.  
+* **Configuration Management:** Sử dụng biến môi trường (environment variables) hoặc thư viện như python-dotenv để quản lý các cấu hình nhạy cảm (chuỗi kết nối DB, secret key JWT).  
+* **Dependency Management:** pip và requirements.txt hoặc Poetry/Pipenv.
+
+## **2\. Các Lớp Kiến trúc (Architectural Layers)**
+
+Kiến trúc sẽ được phân chia thành các lớp rõ ràng:
+
+* **Lớp Trình bày (Presentation Layer):**  
+  * Chứa các endpoint API (sử dụng FastAPI APIRouter).  
+  * Xử lý việc nhận request HTTP, phân tích cú pháp dữ liệu đầu vào (sử dụng Pydantic models), xác thực token JWT, ủy quyền (kiểm tra quyền truy cập của người dùng).  
+  * Gọi các hàm xử lý logic từ Lớp Dịch vụ.  
+  * Định dạng dữ liệu trả về (response) theo chuẩn API (JSON) và xử lý lỗi.  
+  * **Công nghệ:** FastAPI, Pydantic.  
+* **Lớp Dịch vụ (Service Layer / Business Logic Layer):**  
+  * Chứa logic nghiệp vụ cốt lõi của ứng dụng.  
+  * Nhận dữ liệu đã được xác thực và kiểm tra từ Lớp Trình bày.  
+  * Thực hiện các thao tác phức tạp liên quan đến nhiều bảng hoặc cần tính toán (ví dụ: tạo giao dịch và cập nhật số dư tài khoản, tính toán báo cáo).  
+  * Gọi các phương thức tương tác DB từ Lớp Truy cập Dữ liệu.  
+  * Đảm bảo tính toàn vẹn dữ liệu và áp dụng các quy tắc nghiệp vụ.  
+  * **Công nghệ:** Python classes/functions, tương tác với Lớp Truy cập Dữ liệu.  
+* **Lớp Truy cập Dữ liệu (Data Access Layer / Repository Layer / CRUD Layer):**  
+  * Chịu trách nhiệm tương tác trực tiếp với cơ sở dữ liệu.  
+  * Chứa các hàm CRUD cơ bản cho từng mô hình dữ liệu (User, Account, Transaction, v.v.).  
+  * Sử dụng ORM (SQLAlchemy) để thực hiện các truy vấn SQL.  
+  * Ẩn đi chi tiết cụ thể của cơ sở dữ liệu khỏi Lớp Dịch vụ.  
+  * **Công nghệ:** SQLAlchemy ORM, Python classes/functions.  
+* **Lớp Cơ sở dữ liệu (Database Layer):**  
+  * Cơ sở dữ liệu PostgreSQL với lược đồ đã cung cấp.  
+  * **Công nghệ:** PostgreSQL.  
+* **Thành phần Xác thực (Authentication Component):**  
+  * Module riêng biệt xử lý logic đăng ký, đăng nhập, tạo/xác minh JWT.  
+  * Sử dụng thư viện JWT và password hashing.  
+  * Được sử dụng bởi Lớp Trình bày (đặc biệt là các endpoint /auth/\*) và như một dependency cho các endpoint yêu cầu xác thực.  
+* **Worker Giao dịch Lặp lại (Recurring Transaction Worker):**  
+  * Một tiến trình nền hoặc tác vụ được lập lịch riêng biệt.  
+  * Định kỳ kiểm tra bảng RecurringTransactions.  
+  * Tạo các bản ghi Transactions mới dựa trên các định nghĩa lặp lại có next\_due\_date đến hạn hoặc đã quá hạn.  
+  * Cập nhật next\_due\_date và last\_created\_date trong bảng RecurringTransactions.  
+  * Có thể sử dụng các thư viện như Celery, APScheduler.
+
+## **3\. Luồng Hoạt động (Flow)**
+
+1. **Đăng ký/Đăng nhập:**  
+   * Client gửi request POST đến /auth/signup hoặc /auth/login.  
+   * Lớp Trình bày nhận request, validate dữ liệu.  
+   * Lớp Trình bày gọi hàm tương ứng trong Thành phần Xác thực.  
+   * Thành phần Xác thực tương tác với Lớp Truy cập Dữ liệu (User CRUD) để lưu/lấy thông tin người dùng và kiểm tra mật khẩu.  
+   * Nếu đăng nhập thành công, Thành phần Xác thực tạo JWT chứa user\_id.  
+   * Lớp Trình bày trả về thông tin người dùng và JWT cho Client.  
+2. **Request yêu cầu Xác thực (ví dụ: GET /accounts):**  
+   * Client gửi request GET đến /accounts kèm theo JWT trong header Authorization: Bearer \<token\>.  
+   * Lớp Trình bày (sử dụng Dependency Injection) xác minh JWT. Nếu token hợp lệ, user\_id được trích xuất và đưa vào context của request. Nếu không hợp lệ, trả về lỗi 401 Unauthorized.  
+   * Lớp Trình bày gọi hàm tương ứng trong Lớp Dịch vụ (ví dụ: account\_service.get\_user\_accounts(user\_id)).  
+   * Lớp Dịch vụ gọi hàm tương ứng trong Lớp Truy cập Dữ liệu (ví dụ: account\_crud.get\_by\_user\_id(user\_id)).  
+   * Lớp Truy cập Dữ liệu thực hiện truy vấn DB bằng SQLAlchemy để lấy dữ liệu Accounts chỉ thuộc về user\_id đó.  
+   * Dữ liệu được trả về qua các lớp: Lớp Truy cập Dữ liệu \-\> Lớp Dịch vụ \-\> Lớp Trình bày.  
+   * Lớp Trình bày định dạng dữ liệu thành JSON và trả về cho Client.  
+3. **Tạo Giao dịch (POST /transactions):**  
+   * Client gửi request POST đến /transactions kèm JWT và dữ liệu giao dịch.  
+   * Lớp Trình bày xác minh JWT, trích xuất user\_id, validate dữ liệu request (bao gồm kiểm tra account\_id và category\_id có tồn tại trong DB hay không).  
+   * Lớp Trình bày gọi hàm trong Lớp Dịch vụ (transaction\_service.create\_transaction(user\_id, transaction\_data)).  
+   * Lớp Dịch vụ:  
+     * Kiểm tra lại account\_id và category\_id có thuộc về người dùng đó không (hoặc là danh mục hệ thống).  
+     * Xác định transaction\_type từ category\_id.  
+     * Bắt đầu một transaction DB.  
+     * Gọi transaction\_crud.create(...) để lưu giao dịch mới.  
+     * Tính toán số dư mới cho tài khoản.  
+     * Gọi account\_crud.update\_balance(...) để cập nhật current\_balance trong bảng Accounts.  
+     * Commit transaction DB.  
+   * Lớp Trình bày trả về thông tin giao dịch đã tạo.
+
+## **4\. Cấu trúc Project Đề xuất (Ví dụ với FastAPI)**
+
+your\_project\_name/  
+├── app/  
+│   ├── \_\_init\_\_.py  
+│   ├── main.py             \# Khởi tạo FastAPI app, cấu hình CORS, include routers  
+│   ├── api/  
+│   │   ├── \_\_init\_\_.py  
+│   │   ├── v1/             \# Versioning API (có thể bỏ qua nếu chỉ có 1 version)  
+│   │   │   ├── \_\_init\_\_.py  
+│   │   │   ├── endpoints/  \# Routers cho từng nhóm API (Presentation Layer)  
+│   │   │   │   ├── \_\_init\_\_.py  
+│   │   │   │   ├── auth.py  
+│   │   │   │   ├── accounts.py  
+│   │   │   │   ├── categories.py  
+│   │   │   │   ├── transactions.py  
+│   │   │   │   ├── budgets.py  
+│   │   │   │   ├── goals.py  
+│   │   │   │   ├── tags.py  
+│   │   │   │   ├── recurring\_transactions.py  
+│   │   │   │   ├── reports.py  
+│   │   │   ├── dependencies.py \# Các hàm Dependency Injection (DB session, current user)  
+│   │   │   ├── schemas.py      \# Pydantic models cho request/response data  
+│   ├── core/  
+│   │   ├── \_\_init\_\_.py  
+│   │   ├── config.py         \# Load cấu hình từ biến môi trường  
+│   │   ├── security.py       \# Hàm băm mật khẩu, tạo/xác minh JWT  
+│   │   ├── database.py       \# Cấu hình kết nối DB, tạo session  
+│   ├── crud/               \# Lớp Truy cập Dữ liệu (CRUD operations)  
+│   │   ├── \_\_init\_\_.py  
+│   │   ├── base.py           \# Lớp CRUD base chung  
+│   │   ├── user.py           \# CRUD cho User  
+│   │   ├── account.py        \# CRUD cho Account  
+│   │   ├── category.py       \# CRUD cho Category  
+│   │   ├── transaction.py    \# CRUD cho Transaction  
+│   │   ├── budget.py         \# CRUD cho Budget  
+│   │   ├── goal.py           \# CRUD cho Goal  
+│   │   ├── tag.py            \# CRUD cho Tag  
+│   │   ├── recurring\_transaction.py \# CRUD cho RecurringTransaction  
+│   ├── models/             \# Định nghĩa các mô hình SQLAlchemy ORM  
+│   │   ├── \_\_init\_\_.py  
+│   │   ├── user.py  
+│   │   ├── account.py  
+│   │   ├── category.py  
+│   │   ├── transaction.py  
+│   │   ├── budget.py  
+│   │   ├── goal.py  
+│   │   ├── tag.py  
+│   │   ├── recurring\_transaction.py  
+│   ├── services/           \# Lớp Dịch vụ (Business Logic)  
+│   │   ├── \_\_init\_\_.py  
+│   │   ├── auth\_service.py  
+│   │   ├── account\_service.py  
+│   │   ├── transaction\_service.py  
+│   │   ├── budget\_service.py  
+│   │   ├── goal\_service.py  
+│   │   ├── report\_service.py  
+│   ├── worker/             \# (Optional) Folder cho worker giao dịch lặp lại  
+│   │   ├── \_\_init\_\_.py  
+│   │   ├── recurring\_task.py \# Logic của worker  
+│   │   ├── scheduler.py      \# Cấu hình scheduler (ví dụ: APScheduler)  
+├── tests/                  \# Unit và Integration tests  
+├── .env                    \# File chứa biến môi trường  
+├── requirements.txt        \# Danh sách các thư viện cần cài đặt  
+└── Dockerfile              \# (Optional) File cấu hình Docker
+
+## **5\. Các Điểm Cần Lưu ý Khi Triển khai**
+
+* **Quản lý Session DB:** Sử dụng scoped\_session của SQLAlchemy hoặc Dependency Injection của FastAPI để đảm bảo mỗi request có một session DB riêng biệt và được đóng/rollback đúng cách.  
+* **Xử lý Lỗi:** Triển khai xử lý lỗi tập trung (ví dụ: sử dụng @app.exception\_handler trong FastAPI) để trả về các phản hồi lỗi nhất quán (ví dụ: 400 Bad Request, 401 Unauthorized, 403 Forbidden, 404 Not Found, 500 Internal Server Error).  
+* **Kiểm tra Quyền Sở hữu Dữ liệu:** Tại Lớp Dịch vụ (hoặc Lớp Truy cập Dữ liệu), luôn kiểm tra xem dữ liệu mà người dùng đang cố gắng truy cập/thao tác có thuộc về user\_id của họ hay không.  
+* **Validation Dữ liệu:** Sử dụng Pydantic models để validate dữ liệu đầu vào từ request body và query parameters.  
+* **Bảo mật Mật khẩu:** Luôn sử dụng thuật toán băm mạnh (như bcrypt) và salt khi lưu trữ mật khẩu.  
+* **Bảo mật JWT Secret:** Giữ bí mật JWT secret key và không commit nó vào source code. Sử dụng biến môi trường.  
+* **Transactions DB:** Sử dụng transaction trong SQLAlchemy khi thực hiện nhiều thao tác DB liên quan đến nhau (ví dụ: tạo giao dịch và cập nhật số dư tài khoản) để đảm bảo tính nhất quán.  
+* **Giao dịch Lặp lại:** Thiết kế worker một cách cẩn thận để xử lý các trường hợp lỗi, đảm bảo giao dịch không bị tạo trùng lặp và cập nhật next\_due\_date chính xác.
+
+Kiến trúc này cung cấp một nền tảng vững chắc để xây dựng API backend quản lý tài chính cá nhân của bạn bằng Python và PostgreSQL local.
+
+
 
 **Thiết kế API Backend (Python + PostgreSQL Local)**
 
@@ -209,3 +369,5 @@ Dưới đây là danh sách các API được đề xuất, tuân theo nguyên 
     * **Response:** Mảng các đối tượng `{ category_id, category_name, budget_amount, actual_spending, remaining_amount }`
 
 ---
+
+

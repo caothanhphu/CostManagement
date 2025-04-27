@@ -1,3 +1,4 @@
+
 -- Use this script to create the tables in your PostgreSQL database.
 
 -- Create ENUM types first (PostgreSQL specific)

@@ -1,0 +1,378 @@
+{
+	"info": {
+		"_postman_id": "7f5652e7-6400-4219-82ee-5ec7e3af19e1",
+		"name": "Personal Finance API",
+		"schema": "https://schema.getpostman.com/json/collection/v2.0.0/collection.json",
+		"_exporter_id": "42687982"
+	},
+	"item": [
+		{
+			"name": "POST Signup",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Signup successful\", function () {",
+							"    pm.response.to.have.status(201);",
+							"    pm.expect(pm.response.json()).to.have.property(\"user_id\");",
+							"    pm.expect(pm.response.json().email).to.equal(\"testuser@example.com\");",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"username\": \"testuser\",\n    \"email\": \"testuser@example.com\",\n    \"password\": \"SecurePass123!\",\n    \"full_name\": \"Test User\",\n    \"default_currency\": \"VND\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": "{{base_url}}/auth/signup"
+			},
+			"response": []
+		},
+		{
+			"name": "POST Login",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Login successful\", function () {",
+							"    pm.response.to.have.status(200);",
+							"    pm.expect(pm.response.json()).to.have.property(\"access_token\");",
+							"    pm.expect(pm.response.json().token_type).to.equal(\"bearer\");",
+							"});",
+							"",
+							"// Store the access token in collection variable",
+							"const response = pm.response.json();",
+							"pm.collectionVariables.set(\"access_token\", response.access_token);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"email\": \"testuser@example.com\",\n    \"password\": \"SecurePass123!\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": "{{base_url}}/auth/login"
+			},
+			"response": []
+		},
+		{
+			"name": "POST Logout",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Logout successful\", function () {",
+							"    pm.response.to.have.status(200);",
+							"    pm.expect(pm.response.json().message).to.equal(\"Successfully logged out\");",
+							"});",
+							"",
+							"// Clear the access token",
+							"pm.collectionVariables.set(\"access_token\", \"\");"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"url": "{{base_url}}/auth/logout"
+			},
+			"response": []
+		},
+		{
+			"name": "GET User",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Get user successful\", function () {",
+							"    pm.response.to.have.status(200);",
+							"    pm.expect(pm.response.json()).to.have.property(\"user_id\");",
+							"    pm.expect(pm.response.json().email).to.equal(\"testuser@example.com\");",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{access_token}}"
+					}
+				],
+				"url": "{{base_url}}/auth/user"
+			},
+			"response": []
+		},
+		{
+			"name": "PUT Update Profile",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Update profile successful\", function () {",
+							"    pm.response.to.have.status(200);",
+							"    pm.expect(pm.response.json().full_name).to.equal(\"Updated Test User\");",
+							"    pm.expect(pm.response.json().default_currency).to.equal(\"USD\");",
+							"    pm.expect(pm.response.json().email).to.equal(\"updateduser@example.com\");",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{access_token}}"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"full_name\": \"Updated Test User\",\n    \"default_currency\": \"USD\",\n    \"email\": \"updateduser@example.com\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": "{{base_url}}/profile"
+			},
+			"response": []
+		},
+		{
+			"name": "POST Create Account",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Create account successful\", function () {",
+							"    pm.response.to.have.status(201);",
+							"    pm.expect(pm.response.json()).to.have.property(\"account_id\");",
+							"    pm.expect(pm.response.json().account_name).to.equal(\"My Savings\");",
+							"    pm.expect(pm.response.json().account_type).to.equal(\"bank_account\");",
+							"    pm.expect(pm.response.json().balance).to.equal(1000.0);",
+							"    pm.expect(pm.response.json().currency).to.equal(\"VND\");",
+							"    pm.expect(pm.response.json().is_active).to.equal(true);",
+							"});",
+							"",
+							"// Store the account_id in collection variable",
+							"const response = pm.response.json();",
+							"pm.collectionVariables.set(\"account_id\", response.account_id);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{access_token}}"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"account_name\": \"My Savings\",\n    \"account_type\": \"bank_account\",\n    \"initial_balance\": 1000.0,\n    \"currency\": \"VND\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": "{{base_url}}/accounts"
+			},
+			"response": []
+		},
+		{
+			"name": "GET Accounts",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Get accounts successful\", function () {",
+							"    pm.response.to.have.status(200);",
+							"    pm.expect(pm.response.json()).to.be.an(\"array\");",
+							"    if (pm.response.json().length > 0) {",
+							"        pm.expect(pm.response.json()[0]).to.have.property(\"account_id\");",
+							"        pm.expect(pm.response.json()[0].is_active).to.equal(true);",
+							"    }",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{access_token}}"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/accounts?is_active=true",
+					"host": ["{{base_url}}"],
+					"path": ["accounts"],
+					"query": [
+						{
+							"key": "is_active",
+							"value": "true"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "GET Account by ID",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Get account by ID successful\", function () {",
+							"    pm.response.to.have.status(200);",
+							"    pm.expect(pm.response.json()).to.have.property(\"account_id\");",
+							"    pm.expect(pm.response.json().account_name).to.equal(\"My Savings\");",
+							"    pm.expect(pm.response.json().account_type).to.equal(\"bank_account\");",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{access_token}}"
+					}
+				],
+				"url": "{{base_url}}/accounts/{{account_id}}"
+			},
+			"response": []
+		},
+		{
+			"name": "PUT Update Account",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Update account successful\", function () {",
+							"    pm.response.to.have.status(200);",
+							"    pm.expect(pm.response.json().account_name).to.equal(\"Updated Savings\");",
+							"    pm.expect(pm.response.json().account_type).to.equal(\"savings\");",
+							"    pm.expect(pm.response.json().is_active).to.equal(true);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{access_token}}"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"account_name\": \"Updated Savings\",\n    \"account_type\": \"savings\",\n    \"is_active\": true\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": "{{base_url}}/accounts/{{account_id}}"
+			},
+			"response": []
+		},
+		{
+			"name": "DELETE Account",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Delete account successful\", function () {",
+							"    pm.response.to.have.status(200);",
+							"    pm.expect(pm.response.json().message).to.equal(\"Account deactivated successfully\");",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "DELETE",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{access_token}}"
+					}
+				],
+				"url": "{{base_url}}/accounts/{{account_id}}"
+			},
+			"response": []
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8000"
+		},
+		{
+			"key": "access_token",
+			"value": ""
+		},
+		{
+			"key": "account_id",
+			"value": ""
+		}
+	]
+}

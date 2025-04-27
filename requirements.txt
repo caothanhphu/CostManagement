@@ -3,5 +3,15 @@ python-dotenv
 fastapi
 uvicorn
 pydantic
-supabase
 pydantic[email]
+pytest
+pytest-asyncio
+httpx
+python-dotenv
+pytest-dotenv
+sqlalchemy
+psycopg2-binary
+pydantic-settings
+fastapi-pagination
+passlib[bcrypt]
+python-jose[cryptography]
